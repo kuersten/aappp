@@ -292,9 +292,3 @@ FUNCTIONS
         if a weight function is specified, also a value for *weight_vector_length* must be specified.
         in that case the weight function is used for all values of n in the range 0, 1, 2, ..., *weight_vector_length*-1
         for n>=weight_vector_length, the weight weight(*weight_vector_length*-1) is used.
-
-FILE
-    /usr/local/lib/python3.10/site-packages/aappp.cpython-310-darwin.so
-
-
-None
