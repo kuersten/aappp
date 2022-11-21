@@ -1384,12 +1384,12 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 			*simulation->observables->neighbors_moment4=*simulation->observables->neighbors_moment4/simulation->state->particle_number;
 		}
 		else
-			for (i=0; i<simulation->parameters->particle_species; i++)
+			for (k=0; k<simulation->parameters->particle_species; k++)
 			{
-				*(simulation->observables->neighbors_moment1+i)=*(simulation->observables->neighbors_moment1+i)/ *(simulation->parameters->species_particle_number+i);
-				*(simulation->observables->neighbors_moment2+i)=*(simulation->observables->neighbors_moment2+i)/ *(simulation->parameters->species_particle_number+i);
-				*(simulation->observables->neighbors_moment3+i)=*(simulation->observables->neighbors_moment3+i)/ *(simulation->parameters->species_particle_number+i);
-				*(simulation->observables->neighbors_moment4+i)=*(simulation->observables->neighbors_moment4+i)/ *(simulation->parameters->species_particle_number+i);
+				*(simulation->observables->neighbors_moment1+k)=*(simulation->observables->neighbors_moment1+k)/ *(simulation->parameters->species_particle_number+k);
+				*(simulation->observables->neighbors_moment2+k)=*(simulation->observables->neighbors_moment2+k)/ *(simulation->parameters->species_particle_number+k);
+				*(simulation->observables->neighbors_moment3+k)=*(simulation->observables->neighbors_moment3+k)/ *(simulation->parameters->species_particle_number+k);
+				*(simulation->observables->neighbors_moment4+k)=*(simulation->observables->neighbors_moment4+k)/ *(simulation->parameters->species_particle_number+k);
 			}
 	}
 	return PyCapsule_New((void *) simulation, "", NULL);
