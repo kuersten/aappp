@@ -27,7 +27,23 @@ help(aappp.aappp_init)
 Help on module aappp:
 
 NAME
-    aappp - aappp aligning active particles py package
+    aappp - aappp aligning active particles py package version 1.1
+
+VERSION INFO
+    From version 1.0 to version 1.1 the measurement of moments of the number of neighbors was modified.
+    In version 1.0 the moments of the neighbor number have been obtained averaging over all particles and all measurement time steps.
+    In that way the moments could also be calculated from the number of neighbor histogram (when the histogram is large enough to not miss any events) yielding the exact same result.
+    In version 1.1 at each time step the average number of neighbors is calculated (averaging over all particles at a given time).
+    In this way, the average number of neighbors is an observable.
+    From this ensemble average number, moments are calculated averaging over different time steps.
+    This change does not affect the first moment, because the two averages commute for the first moment.
+    However, the second to fourth momemt are different.
+    The number of neighbor histogram was not changed.
+    Thus, the histogram is still taken over all particles and time steps (without taking the average before).
+    It is possible to use version 1.1 to analyze data produced with version 1.0.
+    In this case a warning is shown, however all data can be accesses in the same way as using version 1.0.
+    ------
+ 
 
 DESCRIPTION
     This package provides functions for agent-based simulations of various models for aligning active particles in two dimensions.
