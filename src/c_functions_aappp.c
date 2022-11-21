@@ -7393,6 +7393,10 @@ void VM_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -7411,25 +7415,45 @@ void VM_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
 	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
 	{
 		box=*(simulation->parameters->box+i);
@@ -7530,6 +7554,7 @@ void VM_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
