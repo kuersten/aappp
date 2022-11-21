@@ -7744,6 +7744,10 @@ void mfVM_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -7762,25 +7766,142 @@ void mfVM_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
+	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
+	{
+		box=*(simulation->parameters->box+i);
+		while (box !=NULL)
+		{
+			//calculate contributions to polar and nematic order parameters
+			if (simulation->parameters->particle_species==1)
+			{
+				*polar_x+=cos(box->theta);
+				*polar_y+=sin(box->theta);
+				*nematic_x+=cos(2.0*box->theta);
+				*nematic_y+=sin(2.0*box->theta);
+				*(*simulation->observables->hist_theta+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			else
+			{
+				*(polar_x+get_species(box->index, simulation->parameters))+=cos(box->theta);
+				*(polar_y+get_species(box->index, simulation->parameters))+=sin(box->theta);
+				*(nematic_x+get_species(box->index, simulation->parameters))+=cos(2.0*box->theta);
+				*(nematic_y+get_species(box->index, simulation->parameters))+=sin(2.0*box->theta);
+				*(*(simulation->observables->hist_theta+get_species(box->index, simulation->parameters))+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			//set angle to value after interaction
+			box->theta=box->theta_new;
+			//streaming -> movement of the particles
+			if (simulation->parameters->particle_species==1)
+				box->x+=*simulation->parameters->speed*cos(box->theta);
+			else
+				box->x+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*cos(box->theta);
+			if (simulation->parameters->boundary_x!=0) //reflecting boundary in x-direction
+				if ((box->x<0.0) || (box->x>simulation->state->length_x))
+				{
+					box->x= -box->x;
+					box->theta=M_PI-box->theta;
+					if (box->theta>M_PI)
+						box->theta-= 2.0*M_PI;
+				}
+			while (box->x <0.0)
+				box->x+=simulation->state->length_x;
+			while (box->x >simulation->state->length_x)
+				box->x-=simulation->state->length_x;
+			if (simulation->parameters->particle_species==1)
+				box->y+=*simulation->parameters->speed*sin(box->theta);
+			else
+				box->y+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*sin(box->theta);
+			if (simulation->parameters->boundary_y!=0) //reflecting boundary in y-direction
+				if ((box->y<0.0) || (box->y>simulation->state->length_y))
+				{
+					box->y= -box->y;
+					box->theta=-box->theta;
+				}
+			while (box->y <0.0)
+				box->y+=simulation->state->length_y;
+			while (box->y >simulation->state->length_y)
+				box->y-=simulation->state->length_y;
+			//go to next particle in box
+			box=box->next_particle;
+		}
+	}
+	VM_clean_boxes(simulation->parameters);
+	if (simulation->parameters->particle_species==1)
+	{
+		*polar_x=*polar_x/simulation->state->particle_number;
+		*polar_y=*polar_y/simulation->state->particle_number;
+		*nematic_x=*nematic_x/simulation->state->particle_number;
+		*nematic_y=*nematic_y/simulation->state->particle_number;
+		*simulation->observables->polar_order=sqrt(*polar_x**polar_x+*polar_y**polar_y);
+		*simulation->observables->nematic_order=sqrt(*nematic_x**nematic_x+*nematic_y**nematic_y);
+		*simulation->observables->polar_order_moment1+=*simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment2+=*simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment3+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment4+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->nematic_order_moment1+=*simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment2+=*simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment3+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment4+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+	}
+	else
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(polar_x+k)=*(polar_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(polar_y+k)=*(polar_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_x+k)=*(nematic_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_y+k)=*(nematic_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(simulation->observables->polar_order+k)=sqrt(*(polar_x+k)**(polar_x+k)+*(polar_y+k)**(polar_y+k));
+			*(simulation->observables->nematic_order+k)=sqrt(*(nematic_x+k)**(nematic_x+k)+*(nematic_y+k)**(nematic_y+k));
+			*(simulation->observables->polar_order_moment1+k)+=*(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment2+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment3+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment4+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->nematic_order_moment1+k)+=*(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment2+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment3+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment4+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+		}
+	simulation->observables->measurement_steps+=1;
+	free(polar_x);
 	for (i=0; i<simulation->parameters->mf_box_number_x*simulation->parameters->mf_box_number_y; i++)
 	{
 		box=*(simulation->parameters->mf_box+i);
@@ -7881,6 +8002,7 @@ void mfVM_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
@@ -7895,6 +8017,10 @@ void mfNVM_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -7913,25 +8039,142 @@ void mfNVM_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
+	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
+	{
+		box=*(simulation->parameters->box+i);
+		while (box !=NULL)
+		{
+			//calculate contributions to polar and nematic order parameters
+			if (simulation->parameters->particle_species==1)
+			{
+				*polar_x+=cos(box->theta);
+				*polar_y+=sin(box->theta);
+				*nematic_x+=cos(2.0*box->theta);
+				*nematic_y+=sin(2.0*box->theta);
+				*(*simulation->observables->hist_theta+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			else
+			{
+				*(polar_x+get_species(box->index, simulation->parameters))+=cos(box->theta);
+				*(polar_y+get_species(box->index, simulation->parameters))+=sin(box->theta);
+				*(nematic_x+get_species(box->index, simulation->parameters))+=cos(2.0*box->theta);
+				*(nematic_y+get_species(box->index, simulation->parameters))+=sin(2.0*box->theta);
+				*(*(simulation->observables->hist_theta+get_species(box->index, simulation->parameters))+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			//set angle to value after interaction
+			box->theta=box->theta_new;
+			//streaming -> movement of the particles
+			if (simulation->parameters->particle_species==1)
+				box->x+=*simulation->parameters->speed*cos(box->theta);
+			else
+				box->x+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*cos(box->theta);
+			if (simulation->parameters->boundary_x!=0) //reflecting boundary in x-direction
+				if ((box->x<0.0) || (box->x>simulation->state->length_x))
+				{
+					box->x= -box->x;
+					box->theta=M_PI-box->theta;
+					if (box->theta>M_PI)
+						box->theta-= 2.0*M_PI;
+				}
+			while (box->x <0.0)
+				box->x+=simulation->state->length_x;
+			while (box->x >simulation->state->length_x)
+				box->x-=simulation->state->length_x;
+			if (simulation->parameters->particle_species==1)
+				box->y+=*simulation->parameters->speed*sin(box->theta);
+			else
+				box->y+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*sin(box->theta);
+			if (simulation->parameters->boundary_y!=0) //reflecting boundary in y-direction
+				if ((box->y<0.0) || (box->y>simulation->state->length_y))
+				{
+					box->y= -box->y;
+					box->theta=-box->theta;
+				}
+			while (box->y <0.0)
+				box->y+=simulation->state->length_y;
+			while (box->y >simulation->state->length_y)
+				box->y-=simulation->state->length_y;
+			//go to next particle in box
+			box=box->next_particle;
+		}
+	}
+	VM_clean_boxes(simulation->parameters);
+	if (simulation->parameters->particle_species==1)
+	{
+		*polar_x=*polar_x/simulation->state->particle_number;
+		*polar_y=*polar_y/simulation->state->particle_number;
+		*nematic_x=*nematic_x/simulation->state->particle_number;
+		*nematic_y=*nematic_y/simulation->state->particle_number;
+		*simulation->observables->polar_order=sqrt(*polar_x**polar_x+*polar_y**polar_y);
+		*simulation->observables->nematic_order=sqrt(*nematic_x**nematic_x+*nematic_y**nematic_y);
+		*simulation->observables->polar_order_moment1+=*simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment2+=*simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment3+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment4+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->nematic_order_moment1+=*simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment2+=*simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment3+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment4+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+	}
+	else
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(polar_x+k)=*(polar_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(polar_y+k)=*(polar_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_x+k)=*(nematic_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_y+k)=*(nematic_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(simulation->observables->polar_order+k)=sqrt(*(polar_x+k)**(polar_x+k)+*(polar_y+k)**(polar_y+k));
+			*(simulation->observables->nematic_order+k)=sqrt(*(nematic_x+k)**(nematic_x+k)+*(nematic_y+k)**(nematic_y+k));
+			*(simulation->observables->polar_order_moment1+k)+=*(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment2+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment3+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment4+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->nematic_order_moment1+k)+=*(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment2+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment3+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment4+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+		}
+	simulation->observables->measurement_steps+=1;
+	free(polar_x);
 	for (i=0; i<simulation->parameters->mf_box_number_x*simulation->parameters->mf_box_number_y; i++)
 	{
 		box=*(simulation->parameters->mf_box+i);
@@ -8032,6 +8275,7 @@ void mfNVM_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
@@ -8046,6 +8290,10 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -8064,25 +8312,142 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
+	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
+	{
+		box=*(simulation->parameters->box+i);
+		while (box !=NULL)
+		{
+			//calculate contributions to polar and nematic order parameters
+			if (simulation->parameters->particle_species==1)
+			{
+				*polar_x+=cos(box->theta);
+				*polar_y+=sin(box->theta);
+				*nematic_x+=cos(2.0*box->theta);
+				*nematic_y+=sin(2.0*box->theta);
+				*(*simulation->observables->hist_theta+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			else
+			{
+				*(polar_x+get_species(box->index, simulation->parameters))+=cos(box->theta);
+				*(polar_y+get_species(box->index, simulation->parameters))+=sin(box->theta);
+				*(nematic_x+get_species(box->index, simulation->parameters))+=cos(2.0*box->theta);
+				*(nematic_y+get_species(box->index, simulation->parameters))+=sin(2.0*box->theta);
+				*(*(simulation->observables->hist_theta+get_species(box->index, simulation->parameters))+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			//set angle to value after interaction
+			box->theta=box->theta_new;
+			//streaming -> movement of the particles
+			if (simulation->parameters->particle_species==1)
+				box->x+=*simulation->parameters->speed*cos(box->theta);
+			else
+				box->x+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*cos(box->theta);
+			if (simulation->parameters->boundary_x!=0) //reflecting boundary in x-direction
+				if ((box->x<0.0) || (box->x>simulation->state->length_x))
+				{
+					box->x= -box->x;
+					box->theta=M_PI-box->theta;
+					if (box->theta>M_PI)
+						box->theta-= 2.0*M_PI;
+				}
+			while (box->x <0.0)
+				box->x+=simulation->state->length_x;
+			while (box->x >simulation->state->length_x)
+				box->x-=simulation->state->length_x;
+			if (simulation->parameters->particle_species==1)
+				box->y+=*simulation->parameters->speed*sin(box->theta);
+			else
+				box->y+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*sin(box->theta);
+			if (simulation->parameters->boundary_y!=0) //reflecting boundary in y-direction
+				if ((box->y<0.0) || (box->y>simulation->state->length_y))
+				{
+					box->y= -box->y;
+					box->theta=-box->theta;
+				}
+			while (box->y <0.0)
+				box->y+=simulation->state->length_y;
+			while (box->y >simulation->state->length_y)
+				box->y-=simulation->state->length_y;
+			//go to next particle in box
+			box=box->next_particle;
+		}
+	}
+	VM_clean_boxes(simulation->parameters);
+	if (simulation->parameters->particle_species==1)
+	{
+		*polar_x=*polar_x/simulation->state->particle_number;
+		*polar_y=*polar_y/simulation->state->particle_number;
+		*nematic_x=*nematic_x/simulation->state->particle_number;
+		*nematic_y=*nematic_y/simulation->state->particle_number;
+		*simulation->observables->polar_order=sqrt(*polar_x**polar_x+*polar_y**polar_y);
+		*simulation->observables->nematic_order=sqrt(*nematic_x**nematic_x+*nematic_y**nematic_y);
+		*simulation->observables->polar_order_moment1+=*simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment2+=*simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment3+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment4+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->nematic_order_moment1+=*simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment2+=*simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment3+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment4+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+	}
+	else
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(polar_x+k)=*(polar_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(polar_y+k)=*(polar_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_x+k)=*(nematic_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_y+k)=*(nematic_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(simulation->observables->polar_order+k)=sqrt(*(polar_x+k)**(polar_x+k)+*(polar_y+k)**(polar_y+k));
+			*(simulation->observables->nematic_order+k)=sqrt(*(nematic_x+k)**(nematic_x+k)+*(nematic_y+k)**(nematic_y+k));
+			*(simulation->observables->polar_order_moment1+k)+=*(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment2+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment3+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment4+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->nematic_order_moment1+k)+=*(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment2+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment3+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment4+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+		}
+	simulation->observables->measurement_steps+=1;
+	free(polar_x);
 	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
 	{
 		box=*(simulation->parameters->box+i);
@@ -8183,6 +8548,7 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
@@ -8197,6 +8563,10 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -8215,25 +8585,142 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
+	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
+	{
+		box=*(simulation->parameters->box+i);
+		while (box !=NULL)
+		{
+			//calculate contributions to polar and nematic order parameters
+			if (simulation->parameters->particle_species==1)
+			{
+				*polar_x+=cos(box->theta);
+				*polar_y+=sin(box->theta);
+				*nematic_x+=cos(2.0*box->theta);
+				*nematic_y+=sin(2.0*box->theta);
+				*(*simulation->observables->hist_theta+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			else
+			{
+				*(polar_x+get_species(box->index, simulation->parameters))+=cos(box->theta);
+				*(polar_y+get_species(box->index, simulation->parameters))+=sin(box->theta);
+				*(nematic_x+get_species(box->index, simulation->parameters))+=cos(2.0*box->theta);
+				*(nematic_y+get_species(box->index, simulation->parameters))+=sin(2.0*box->theta);
+				*(*(simulation->observables->hist_theta+get_species(box->index, simulation->parameters))+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			//set angle to value after interaction
+			box->theta=box->theta_new;
+			//streaming -> movement of the particles
+			if (simulation->parameters->particle_species==1)
+				box->x+=*simulation->parameters->speed*cos(box->theta);
+			else
+				box->x+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*cos(box->theta);
+			if (simulation->parameters->boundary_x!=0) //reflecting boundary in x-direction
+				if ((box->x<0.0) || (box->x>simulation->state->length_x))
+				{
+					box->x= -box->x;
+					box->theta=M_PI-box->theta;
+					if (box->theta>M_PI)
+						box->theta-= 2.0*M_PI;
+				}
+			while (box->x <0.0)
+				box->x+=simulation->state->length_x;
+			while (box->x >simulation->state->length_x)
+				box->x-=simulation->state->length_x;
+			if (simulation->parameters->particle_species==1)
+				box->y+=*simulation->parameters->speed*sin(box->theta);
+			else
+				box->y+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*sin(box->theta);
+			if (simulation->parameters->boundary_y!=0) //reflecting boundary in y-direction
+				if ((box->y<0.0) || (box->y>simulation->state->length_y))
+				{
+					box->y= -box->y;
+					box->theta=-box->theta;
+				}
+			while (box->y <0.0)
+				box->y+=simulation->state->length_y;
+			while (box->y >simulation->state->length_y)
+				box->y-=simulation->state->length_y;
+			//go to next particle in box
+			box=box->next_particle;
+		}
+	}
+	VM_clean_boxes(simulation->parameters);
+	if (simulation->parameters->particle_species==1)
+	{
+		*polar_x=*polar_x/simulation->state->particle_number;
+		*polar_y=*polar_y/simulation->state->particle_number;
+		*nematic_x=*nematic_x/simulation->state->particle_number;
+		*nematic_y=*nematic_y/simulation->state->particle_number;
+		*simulation->observables->polar_order=sqrt(*polar_x**polar_x+*polar_y**polar_y);
+		*simulation->observables->nematic_order=sqrt(*nematic_x**nematic_x+*nematic_y**nematic_y);
+		*simulation->observables->polar_order_moment1+=*simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment2+=*simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment3+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment4+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->nematic_order_moment1+=*simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment2+=*simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment3+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment4+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+	}
+	else
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(polar_x+k)=*(polar_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(polar_y+k)=*(polar_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_x+k)=*(nematic_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_y+k)=*(nematic_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(simulation->observables->polar_order+k)=sqrt(*(polar_x+k)**(polar_x+k)+*(polar_y+k)**(polar_y+k));
+			*(simulation->observables->nematic_order+k)=sqrt(*(nematic_x+k)**(nematic_x+k)+*(nematic_y+k)**(nematic_y+k));
+			*(simulation->observables->polar_order_moment1+k)+=*(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment2+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment3+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment4+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->nematic_order_moment1+k)+=*(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment2+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment3+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment4+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+		}
+	simulation->observables->measurement_steps+=1;
+	free(polar_x);
 	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
 	{
 		box=*(simulation->parameters->box+i);
@@ -8334,6 +8821,7 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
@@ -8348,6 +8836,10 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	//new in version 1.1 calculate neighbor moments from ensemble average
+	gdouble * neighbor_number=malloc(simulation->parameters->particle_species*sizeof(gdouble));
+	for (i=0; i<simulation->parameters->particle_species; i++)
+		*(neighbor_number+i)=0.1;
 	for (k=0; k<simulation->parameters->particle_species; k++)
 	{
 		*(polar_x+k)=0.0;
@@ -8366,25 +8858,142 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 			//analyze number of neighbors statistics
 			if (simulation->parameters->particle_species==1)
 			{
-				*simulation->observables->neighbors_moment1+=1.0*neighbor_n;
-				*simulation->observables->neighbors_moment2+=1.0*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment3+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*simulation->observables->neighbors_moment4+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*neighbor_number+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*simulation->observables->hist_neighbors+neighbor_n)+=1;
 			}
 			else
 			{
-				*(simulation->observables->neighbors_moment1+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
-				*(simulation->observables->neighbors_moment2+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment3+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n;
-				*(simulation->observables->neighbors_moment4+get_species(box->index, simulation->parameters))+=1.0*neighbor_n*neighbor_n*neighbor_n*neighbor_n;
+				//changed in version 1.1
+				*(neighbor_number+get_species(box->index, simulation->parameters))+=1.0*neighbor_n;
 				if (neighbor_n<simulation->observables->binnum_neighbors)
 					*(*(simulation->observables->hist_neighbors+get_species(box->index, simulation->parameters))+neighbor_n)+=1;
 			}
 			box=box->next_particle;
 		}
 	}
+	//normalize ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+		*neighbor_number=*neighbor_number/simulation->state->particle_number;
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+			*(neighbor_number+i)=*(neighbor_number+i)/ *(simulation->parameters->species_particle_number+i);
+	// update moments of ensemble averaged neighbor number
+	//changed in version 1.1
+	if (simulation->parameters->particle_species==1)
+	{
+		*simulation->observables->neighbors_moment1+=*(neighbor_number);
+		*simulation->observables->neighbors_moment2+=*(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment3+=*(neighbor_number)**(neighbor_number)**(neighbor_number);
+		*simulation->observables->neighbors_moment4+=*(neighbor_number)**(neighbor_number)**(neighbor_number)**(neighbor_number);
+	}
+	else
+		for (i=0; i<simulation->parameters->particle_species; i++)
+		{
+			*(simulation->observables->neighbors_moment1+i)+=*(neighbor_number+i);
+			*(simulation->observables->neighbors_moment2+i)+=*(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment3+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+			*(simulation->observables->neighbors_moment4+i)+=*(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i)**(neighbor_number+i);
+		}
+	for (i=0; i<simulation->parameters->box_number_x*simulation->parameters->box_number_y; i++)
+	{
+		box=*(simulation->parameters->box+i);
+		while (box !=NULL)
+		{
+			//calculate contributions to polar and nematic order parameters
+			if (simulation->parameters->particle_species==1)
+			{
+				*polar_x+=cos(box->theta);
+				*polar_y+=sin(box->theta);
+				*nematic_x+=cos(2.0*box->theta);
+				*nematic_y+=sin(2.0*box->theta);
+				*(*simulation->observables->hist_theta+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			else
+			{
+				*(polar_x+get_species(box->index, simulation->parameters))+=cos(box->theta);
+				*(polar_y+get_species(box->index, simulation->parameters))+=sin(box->theta);
+				*(nematic_x+get_species(box->index, simulation->parameters))+=cos(2.0*box->theta);
+				*(nematic_y+get_species(box->index, simulation->parameters))+=sin(2.0*box->theta);
+				*(*(simulation->observables->hist_theta+get_species(box->index, simulation->parameters))+((gint32)((M_PI+box->theta)/(2.0*M_PI)*simulation->observables->binnum_theta)))+=1;
+			}
+			//set angle to value after interaction
+			box->theta=box->theta_new;
+			//streaming -> movement of the particles
+			if (simulation->parameters->particle_species==1)
+				box->x+=*simulation->parameters->speed*cos(box->theta);
+			else
+				box->x+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*cos(box->theta);
+			if (simulation->parameters->boundary_x!=0) //reflecting boundary in x-direction
+				if ((box->x<0.0) || (box->x>simulation->state->length_x))
+				{
+					box->x= -box->x;
+					box->theta=M_PI-box->theta;
+					if (box->theta>M_PI)
+						box->theta-= 2.0*M_PI;
+				}
+			while (box->x <0.0)
+				box->x+=simulation->state->length_x;
+			while (box->x >simulation->state->length_x)
+				box->x-=simulation->state->length_x;
+			if (simulation->parameters->particle_species==1)
+				box->y+=*simulation->parameters->speed*sin(box->theta);
+			else
+				box->y+=*(simulation->parameters->speed+get_species(box->index, simulation->parameters))*sin(box->theta);
+			if (simulation->parameters->boundary_y!=0) //reflecting boundary in y-direction
+				if ((box->y<0.0) || (box->y>simulation->state->length_y))
+				{
+					box->y= -box->y;
+					box->theta=-box->theta;
+				}
+			while (box->y <0.0)
+				box->y+=simulation->state->length_y;
+			while (box->y >simulation->state->length_y)
+				box->y-=simulation->state->length_y;
+			//go to next particle in box
+			box=box->next_particle;
+		}
+	}
+	VM_clean_boxes(simulation->parameters);
+	if (simulation->parameters->particle_species==1)
+	{
+		*polar_x=*polar_x/simulation->state->particle_number;
+		*polar_y=*polar_y/simulation->state->particle_number;
+		*nematic_x=*nematic_x/simulation->state->particle_number;
+		*nematic_y=*nematic_y/simulation->state->particle_number;
+		*simulation->observables->polar_order=sqrt(*polar_x**polar_x+*polar_y**polar_y);
+		*simulation->observables->nematic_order=sqrt(*nematic_x**nematic_x+*nematic_y**nematic_y);
+		*simulation->observables->polar_order_moment1+=*simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment2+=*simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment3+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->polar_order_moment4+=*simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order**simulation->observables->polar_order;
+		*simulation->observables->nematic_order_moment1+=*simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment2+=*simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment3+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+		*simulation->observables->nematic_order_moment4+=*simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order**simulation->observables->nematic_order;
+	}
+	else
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(polar_x+k)=*(polar_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(polar_y+k)=*(polar_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_x+k)=*(nematic_x+k)/ *(simulation->parameters->species_particle_number+k);
+			*(nematic_y+k)=*(nematic_y+k)/ *(simulation->parameters->species_particle_number+k);
+			*(simulation->observables->polar_order+k)=sqrt(*(polar_x+k)**(polar_x+k)+*(polar_y+k)**(polar_y+k));
+			*(simulation->observables->nematic_order+k)=sqrt(*(nematic_x+k)**(nematic_x+k)+*(nematic_y+k)**(nematic_y+k));
+			*(simulation->observables->polar_order_moment1+k)+=*(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment2+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment3+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->polar_order_moment4+k)+=*(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k)**(simulation->observables->polar_order+k);
+			*(simulation->observables->nematic_order_moment1+k)+=*(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment2+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment3+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+			*(simulation->observables->nematic_order_moment4+k)+=*(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k)**(simulation->observables->nematic_order+k);
+		}
+	simulation->observables->measurement_steps+=1;
+	free(polar_x);
 	for (i=0; i<simulation->parameters->mf_box_number_x*simulation->parameters->mf_box_number_y; i++)
 	{
 		box=*(simulation->parameters->mf_box+i);
@@ -8485,6 +9094,7 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 	free(polar_y);
 	free(nematic_x);
 	free(nematic_y);
+	free(neighbor_number);
 	return;
 }
 
