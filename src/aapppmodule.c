@@ -1910,10 +1910,11 @@ static PyObject* VM_measurement_results(PyObject* self, PyObject *args)
 		PyList_SET_ITEM(nematic, 2, PyFloat_FromDouble(*simulation->observables->nematic_order_moment2/measurement_steps));
 		PyList_SET_ITEM(nematic, 3, PyFloat_FromDouble(*simulation->observables->nematic_order_moment3/measurement_steps));
 		PyList_SET_ITEM(nematic, 4, PyFloat_FromDouble(*simulation->observables->nematic_order_moment4/measurement_steps));
-		PyList_SET_ITEM(neighbors, 0, PyFloat_FromDouble(*simulation->observables->neighbors_moment1/(simulation->state->particle_number*measurement_steps)));
-		PyList_SET_ITEM(neighbors, 1, PyFloat_FromDouble(*simulation->observables->neighbors_moment2/(simulation->state->particle_number*measurement_steps)));
-		PyList_SET_ITEM(neighbors, 2, PyFloat_FromDouble(*simulation->observables->neighbors_moment3/(simulation->state->particle_number*measurement_steps)));
-		PyList_SET_ITEM(neighbors, 3, PyFloat_FromDouble(*simulation->observables->neighbors_moment4/(simulation->state->particle_number*measurement_steps)));
+		//change in version 1.1, neighbor moments are already normalized with respect to particle number
+		PyList_SET_ITEM(neighbors, 0, PyFloat_FromDouble(*simulation->observables->neighbors_moment1/(measurement_steps)));
+		PyList_SET_ITEM(neighbors, 1, PyFloat_FromDouble(*simulation->observables->neighbors_moment2/(measurement_steps)));
+		PyList_SET_ITEM(neighbors, 2, PyFloat_FromDouble(*simulation->observables->neighbors_moment3/(measurement_steps)));
+		PyList_SET_ITEM(neighbors, 3, PyFloat_FromDouble(*simulation->observables->neighbors_moment4/(measurement_steps)));
 	}
 	else
 	{
@@ -1957,10 +1958,11 @@ static PyObject* VM_measurement_results(PyObject* self, PyObject *args)
 			PyList_SET_ITEM(knematic, 2, PyFloat_FromDouble(*(simulation->observables->nematic_order_moment2+k)/measurement_steps));
 			PyList_SET_ITEM(knematic, 3, PyFloat_FromDouble(*(simulation->observables->nematic_order_moment3+k)/measurement_steps));
 			PyList_SET_ITEM(knematic, 4, PyFloat_FromDouble(*(simulation->observables->nematic_order_moment4+k)/measurement_steps));
-			PyList_SET_ITEM(kneighbors, 0, PyFloat_FromDouble(*(simulation->observables->neighbors_moment1+k)/(*(simulation->parameters->species_particle_number+k)*measurement_steps)));
-			PyList_SET_ITEM(kneighbors, 1, PyFloat_FromDouble(*(simulation->observables->neighbors_moment2+k)/(*(simulation->parameters->species_particle_number+k)*measurement_steps)));
-			PyList_SET_ITEM(kneighbors, 2, PyFloat_FromDouble(*(simulation->observables->neighbors_moment3+k)/(*(simulation->parameters->species_particle_number+k)*measurement_steps)));
-			PyList_SET_ITEM(kneighbors, 3, PyFloat_FromDouble(*(simulation->observables->neighbors_moment4+k)/(*(simulation->parameters->species_particle_number+k)*measurement_steps)));
+			//change in version 1.1, neighbor moments are already normalized with respect to particle number
+			PyList_SET_ITEM(kneighbors, 0, PyFloat_FromDouble(*(simulation->observables->neighbors_moment1+k)/(measurement_steps)));
+			PyList_SET_ITEM(kneighbors, 1, PyFloat_FromDouble(*(simulation->observables->neighbors_moment2+k)/(measurement_steps)));
+			PyList_SET_ITEM(kneighbors, 2, PyFloat_FromDouble(*(simulation->observables->neighbors_moment3+k)/(measurement_steps)));
+			PyList_SET_ITEM(kneighbors, 3, PyFloat_FromDouble(*(simulation->observables->neighbors_moment4+k)/(measurement_steps)));
 			PyList_SET_ITEM(distribution_theta, k, kdistribution_theta);
 			PyList_SET_ITEM(distribution_neighbors, k, kdistribution_neighbors);
 			PyList_SET_ITEM(polar, k, kpolar);
