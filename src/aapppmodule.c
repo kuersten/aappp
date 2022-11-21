@@ -886,24 +886,28 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 	}
 	gint32 myfile;
 	guint64 i;
-	gint32 j, k;
+	gint32 j, k, v;
 	if ((myfile=open(filename, O_RDONLY))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when opening file for reading simulation state.\n");
 		return NULL;
 	}
-	//check version flag in data file, this software can only handle datafiles with version flag=0
-	k=0;
-	if ((read(myfile, &k, sizeof(gint32)))==-1)
+	//check version flag in data file, this software can only handle datafiles with version flag=0 (version 1.0) or version flag=1 (version 1.1)
+	v=1;
+	if ((read(myfile, &v, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when reading version flag from data file\n");
 		return NULL;
 	}
-	if (k!=0)
+	if ((v!=0) && (v!=1))
 	{
-		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.0. Apparently the data file was produced by a later version and can not be read by this version.\n");
+		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.1. Apparently the data file was produced by a later version and can not be read by this version.\n");
 		return NULL;
 	}
+	//new in version 1.1
+	//print warning if data was produced by version 1.0
+	if (v==0)
+		PyErr_Warn_Ex(PyExc_Warning, "This is aappp version 1.1, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information.", 1);
 	//build simulation data structure
 	struct VM_simulation * simulation=malloc(sizeof(struct VM_simulation));
 	//build data structure to hold state variables (including pseudo random number generator state)
@@ -1366,6 +1370,28 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 	simulation->state->nh.distances=malloc(simulation->parameters->mf_kn*sizeof(gdouble));
 	simulation->state->nh.mirror_flag=malloc(simulation->parameters->mf_kn*sizeof(gint32));
 	mfVM_clean_neighborhood(simulation);
+	//new in version 1.1
+	//if data file from version 1.0 was loaded, the number of neighbor moments have to be renormalized
+	if (v==0)
+	{
+		//normalize ensemble averaged neighbor number
+		//new in version 1.1
+		if (simulation->parameters->particle_species==1)
+		{
+			*simulation->observables->neighbors_moment1=*simulation->observables->neighbors_moment1/simulation->state->particle_number;
+			*simulation->observables->neighbors_moment2=*simulation->observables->neighbors_moment2/simulation->state->particle_number;
+			*simulation->observables->neighbors_moment3=*simulation->observables->neighbors_moment3/simulation->state->particle_number;
+			*simulation->observables->neighbors_moment4=*simulation->observables->neighbors_moment4/simulation->state->particle_number;
+		}
+		else
+			for (i=0; i<simulation->parameters->particle_species; i++)
+			{
+				*(simulation->observables->neighbors_moment1+i)=*(simulation->observables->neighbors_moment1+i)/ *(simulation->parameters->species_particle_number+i);
+				*(simulation->observables->neighbors_moment2+i)=*(simulation->observables->neighbors_moment2+i)/ *(simulation->parameters->species_particle_number+i);
+				*(simulation->observables->neighbors_moment3+i)=*(simulation->observables->neighbors_moment3+i)/ *(simulation->parameters->species_particle_number+i);
+				*(simulation->observables->neighbors_moment4+i)=*(simulation->observables->neighbors_moment4+i)/ *(simulation->parameters->species_particle_number+i);
+			}
+	}
 	return PyCapsule_New((void *) simulation, "", NULL);
 }
 
