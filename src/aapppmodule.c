@@ -5,8 +5,8 @@
  *
  *    Description:  package for agent-based simulations of aligning self-propelled particles in two dimensions 
  *
- *        Version:  1.0
- *        Created:  11/07/2022
+ *        Version:  1.1
+ *        Created:  11/21/2022
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
