@@ -27,9 +27,12 @@ help(aappp.aappp_init)
 Help on module aappp:
 
 NAME
-    aappp - aappp aligning active particles py package version 1.1
+    aappp - aappp aligning active particles py package version 1.2
 
 VERSION INFO
+    Before version 1.2 the implementation of reflecting boundary conditions for models mfL, additiveL and nonadditiveL was not as intended.
+    Particle orientations have not been reflected at the boundary for the aforementioned models (reflecting bc were correct for VM, NVM, mfVM, mfNVM).
+    This was corrected with this version.
     From version 1.0 to version 1.1 the measurement of moments of the number of neighbors was modified.
     In version 1.0 the moments of the neighbor number have been obtained averaging over all particles and all measurement time steps.
     In that way the moments could also be calculated from the number of neighbor histogram (when the histogram is large enough to not miss any events) yielding the exact same result.
