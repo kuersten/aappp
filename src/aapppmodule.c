@@ -912,7 +912,7 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information. WARNING: In versions 1.0 and 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
 	//new in version 1.2
 	//print warning if data was produced by version 1.1
-	if (v==0)
+	if (v==1)
 		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.1. WARNING: In version 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
 	//build simulation data structure
 	struct VM_simulation * simulation=malloc(sizeof(struct VM_simulation));
