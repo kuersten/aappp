@@ -8637,8 +8637,8 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 		PyErr_SetString(PyExc_TypeError, "Error when opening file for saving simulation data\n");
 		return -1;
 	}
-	//write a version flag, this is version 1.1, it writes 1, it can only read/write files that have this flag=1, or the previous flag=0, later versions might write different data files and indicate this by using another value for this flag
-	k=1;
+	//write a version flag, this is version 1.2, it writes 2, it can only read/write files that have this flag=2, or the previous flag=0 or flag=1, later versions might write different data files and indicate this by using another value for this flag
+	k=2;
 	if ((write(myfile, &k, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when writing version flag\n");
