@@ -893,21 +893,27 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		return NULL;
 	}
 	//check version flag in data file, this software can only handle datafiles with version flag=0 (version 1.0) or version flag=1 (version 1.1)
-	v=1;
+	v=2;
 	if ((read(myfile, &v, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when reading version flag from data file\n");
 		return NULL;
 	}
-	if ((v!=0) && (v!=1))
+	//modified in version 1.2
+	if ((v!=0) && (v!=1) && (v!=2))
 	{
-		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.1. Apparently the data file was produced by a later version and can not be read by this version.\n");
+		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.2. Apparently the data file was produced by a later version and can not be read by this version.\n");
 		return NULL;
 	}
 	//new in version 1.1
+	//modified in version 1.2
 	//print warning if data was produced by version 1.0
 	if (v==0)
-		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.1, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information.", 1);
+		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information. WARNING: In versions 1.0 and 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
+	//new in version 1.2
+	//print warning if data was produced by version 1.1
+	if (v==0)
+		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.1. WARNING: In version 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
 	//build simulation data structure
 	struct VM_simulation * simulation=malloc(sizeof(struct VM_simulation));
 	//build data structure to hold state variables (including pseudo random number generator state)
