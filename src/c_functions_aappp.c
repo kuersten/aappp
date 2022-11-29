@@ -5,8 +5,8 @@
  *
  *    Description:  
  *
- *        Version:  1.1
- *        Created:  11/21/2022
+ *        Version:  1.2
+ *        Created:  11/29/2022
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
@@ -7093,9 +7093,10 @@ void additiveL_one_step(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -7105,7 +7106,8 @@ void additiveL_one_step(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
@@ -7205,9 +7207,10 @@ void nonadditiveL_one_step(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -7217,7 +7220,8 @@ void nonadditiveL_one_step(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
@@ -7317,9 +7321,10 @@ void mfL_one_step(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -7329,7 +7334,8 @@ void mfL_one_step(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
@@ -8176,9 +8182,10 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -8188,7 +8195,8 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
@@ -8352,9 +8360,10 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -8364,7 +8373,8 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
@@ -8528,9 +8538,10 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->x<0.0) || (box->x>simulation->state->length_x))
 				{
 					box->x= -box->x;
-					box->theta= M_PI-box->theta;
-					if (box->theta>M_PI)
-						box->theta-= 2.0*M_PI;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= M_PI-box->theta_new;
+					if (box->theta_new>M_PI)
+						box->theta_new-= 2.0*M_PI;
 				}
 			while (box->x <0.0)
 				box->x+=simulation->state->length_x;
@@ -8540,7 +8551,8 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 				if ((box->y<0.0) || (box->y>simulation->state->length_y))
 				{
 					box->y= -box->y;
-					box->theta= -box->theta;
+					//mistake in implementation for reflecting bc corrected in version 1.2
+					box->theta_new= -box->theta_new;
 				}
 			while (box->y <0.0)
 				box->y+=simulation->state->length_y;
