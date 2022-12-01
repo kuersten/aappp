@@ -1,6 +1,3 @@
 README.txt
 LICENSE.txt
-src/aapppmodule.c
-src/c_functions_aappp.c
-src/c_functions_aappp.h
-graft src/
+graft src
