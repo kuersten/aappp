@@ -12,6 +12,10 @@ This software depends on:
 *The GLib Library under LGPL license 2.1 or later
 *Python3 under PSF License
 
+FEATURES
+More info on implemented models and measurements can be found in the descriptive paper at https://doi.org/10.48550/arXiv.2211.15630
+or later in this file.
+
 INSTALLATION
 Should work on Linux, macOS and other Unix-OS.
 For compilation and installation type: bash install.bash
