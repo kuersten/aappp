@@ -7395,6 +7395,47 @@ void VM_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -7571,6 +7612,47 @@ void NVM_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -7746,6 +7828,47 @@ void mfVM_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -7922,6 +8045,47 @@ void mfNVM_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -8098,6 +8262,47 @@ void additiveL_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -8276,6 +8481,47 @@ void nonadditiveL_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
@@ -8454,6 +8700,47 @@ void mfL_one_step_measurement(struct VM_simulation * simulation)
 	gint32 neighbor_n;
 	struct VM_particle * box;
 	gint32 k;
+	//calculate fourier transform of density and structure factor
+	gint64 l, l_max;
+	if (simulation->parameters->particle_species==1)
+	{
+		for(l=0; l<simulation->state->particle_number; l++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->fourier_density)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+			}
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(*(simulation->observables->structure_factor)+k)+=cabs(*(*(simulation->observables->fourier_density)+k))*cabs(*(*(simulation->observables->fourier_density)+k))/simulation->state->particle_number;
+			*(*(simulation->observables->fourier_density)+k)=0.0;
+		}
+	}
+	else
+	{
+		l_max=0;
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for(l=l_max; l<(l_max+*(simulation->parameters->species_particle_number+i)); l++)
+			{
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					*(*(simulation->observables->fourier_density+i)+k)+=cexp(2.*M_PI*I*(*(simulation->observables->kx+k)/simulation->state->length_x*(simulation->state->particles+l)->x+*(simulation->observables->ky+k)/simulation->state->length_y*(simulation->state->particles+l)->y));
+				}
+			}
+			l_max+=*(simulation->parameters->species_particle_number+i);
+		}
+		for(i=0; i<simulation->parameters->particle_species; i++)
+		{
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				*(*(simulation->observables->structure_factor+i)+k)+=cabs(*(*(simulation->observables->fourier_density+i)+k))*cabs(*(*(simulation->observables->fourier_density+i)+k))/ *(simulation->parameters->species_particle_number+i);
+				*(*(simulation->observables->fourier_density+i)+k)=0.0;
+			}
+		}
+	}
+	//end of structure factor calculation
 	gdouble * polar_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * polar_y=malloc(simulation->parameters->particle_species*sizeof(gdouble));
 	gdouble * nematic_x=malloc(simulation->parameters->particle_species*sizeof(gdouble));
