@@ -5,8 +5,8 @@
  *
  *    Description:  
  *
- *        Version:  1.0
- *        Created:  11/07/2022 
+ *        Version:  1.2.1
+ *        Created:  12/12/2022 
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
@@ -31,6 +31,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <stdlib.h>
 #include <glib.h>
 #include <fcntl.h>
+#include <complex.h>
 
 
 //data structure containing degrees of freedom of each particle
@@ -116,6 +117,11 @@ struct VM_observables{
 	gint32 binnum_neighbors;
 	guint64 ** hist_theta;
 	guint64 ** hist_neighbors;
+	gint32 sf_mode_number;	//number of modes to compute structure factor
+	gint32 * kx;	//x-components of modes to compute structure factore
+	gint32 * ky;	//y-components of modes to compute structure factore
+	double complex ** fourier_density;	//store fourier transform of density for each species
+	double complex ** structure_factor;	//store structure factor for each species
 };
 
 //data structure containing the full simulation state including all previous structures
