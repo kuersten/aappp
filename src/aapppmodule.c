@@ -382,11 +382,11 @@ static PyObject* VM_init(PyObject* self, PyObject *args, PyObject * keywds)
 		simulation->observables->kx=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
 		simulation->observables->ky=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
 		simulation->observables->fourier_density=malloc(simulation->parameters->particle_species*sizeof(double complex*));
-		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(double complex*));
+		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(gdouble*));
 		for (k=0; k<simulation->parameters->particle_species; k++)
 		{
 			*(simulation->observables->fourier_density+k)=malloc(simulation->observables->sf_mode_number*sizeof(double complex));
-			*(simulation->observables->structure_factor+k)=malloc(simulation->observables->sf_mode_number*sizeof(double complex));
+			*(simulation->observables->structure_factor+k)=malloc(simulation->observables->sf_mode_number*sizeof(gdouble));
 		}
 		for (k=0; k<simulation->observables->sf_mode_number; k++)
 		{
@@ -1940,6 +1940,36 @@ static PyObject* VM_measurement_results(PyObject* self, PyObject *args)
 	PyObject * polar=NULL;
 	PyObject * nematic=NULL;
 	PyObject * neighbors=NULL;
+	//data to hold return structure factor
+	PyObject * structure_factor=NULL;
+	if (simulation->observables->sf_mode_number==0)
+	{
+		structure_factor=PyList_New(0);
+	}
+	else
+	{
+		if (simulation->parameters->particle_species==1)
+		{
+			structure_factor=PyList_New(simulation->observables->sf_mode_number);
+			for (k=0; k<simulation->observables->sf_mode_number; k++)
+			{
+				PyList_SET_ITEM(structure_factor, k, PyFloat_FromDouble(*(*(simulation->observables->structure_factor)+k)/simulation->observables->measurement_steps));
+			}
+		}
+		else
+		{
+			structure_factor=PyList_New(simulation->parameters->particle_species);
+			for (i=0; i<simulation->parameters->particle_species; i++)
+			{
+				PyObject * py_sf=PyList_New(simulation->observables->sf_mode_number);
+				for (k=0; k<simulation->observables->sf_mode_number; k++)
+				{
+					PyList_SET_ITEM(py_sf, k, PyFloat_FromDouble(*(*(simulation->observables->structure_factor+i)+k)/simulation->observables->measurement_steps));
+				}
+				PyList_SET_ITEM(structure_factor, i, py_sf);
+			}
+		}
+	}
 	if (simulation->parameters->particle_species==1)
 	{
 		PyObject * theta= PyList_New(len1);
@@ -2035,12 +2065,13 @@ static PyObject* VM_measurement_results(PyObject* self, PyObject *args)
 			PyList_SET_ITEM(neighbors, k, kneighbors);
 		}
 	}
-	PyObject * MyResult = Py_BuildValue("OOOOO", distribution_theta, distribution_neighbors, polar, nematic, neighbors);
+	PyObject * MyResult = Py_BuildValue("OOOOOO", distribution_theta, distribution_neighbors, polar, nematic, neighbors, structure_factor);
 	Py_DECREF(distribution_theta);
 	Py_DECREF(distribution_neighbors);
 	Py_DECREF(polar);
 	Py_DECREF(nematic);
 	Py_DECREF(neighbors);
+	Py_DECREF(structure_factor);
 	return MyResult;
 }
 
