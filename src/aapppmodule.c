@@ -5,8 +5,8 @@
  *
  *    Description:  package for agent-based simulations of aligning self-propelled particles in two dimensions 
  *
- *        Version:  1.2
- *        Created:  12/01/2022
+ *        Version:  1.2.1
+ *        Created:  12/12/2022
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
@@ -29,7 +29,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 //function called from python as aappp_init
 static PyObject* VM_init(PyObject* self, PyObject *args, PyObject * keywds)
 {
-	static char *kwlist[] = {"v", "eta", "R", "omega", "Lx", "Ly", "gamma", "dt", "N", "seed", "kn", "order", "binnum_theta", "binnum_neighbors", "bx", "by", "weight_function", "weight_vector_length", NULL};
+	static char *kwlist[] = {"v", "eta", "R", "omega", "Lx", "Ly", "gamma", "dt", "N", "seed", "kn", "order", "binnum_theta", "binnum_neighbors", "bx", "by", "weight_function", "weight_vector_length", "sf_modes", NULL};
 	gdouble R=1.0;
 	gdouble Lx=20.0;
 	gdouble Ly=20.0;
@@ -54,7 +54,8 @@ static PyObject* VM_init(PyObject* self, PyObject *args, PyObject * keywds)
 	gint32 py_N_flag=0;
 	PyObject * py_weight_function=NULL;
 	gint32 weight_vector_length=100;
-	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|OOdOddOdOIiiiiiiOi", kwlist, &py_v, &py_eta, &R, &py_omega, &Lx, &Ly, &py_gamma, &dt, &py_N, &seed, &kn, &order, &binnum_theta, &binnum_neighbors, &bx, &by, &py_weight_function, &weight_vector_length))
+	PyObject * py_sf_modes=NULL;
+	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|OOdOddOdOIiiiiiiOi", kwlist, &py_v, &py_eta, &R, &py_omega, &Lx, &Ly, &py_gamma, &dt, &py_N, &seed, &kn, &order, &binnum_theta, &binnum_neighbors, &bx, &by, &py_weight_function, &weight_vector_length, &py_sf_modes))
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when initializing simulation, see >>>help(aappp_init)<<< for help on initialization\n");
 		//dereference python objects
@@ -365,6 +366,38 @@ static PyObject* VM_init(PyObject* self, PyObject *args, PyObject * keywds)
 		**simulation->parameters->coupling=PyFloat_AsDouble(py_gamma);
 		simulation->parameters->omega=malloc(sizeof(gdouble));
 		*simulation->parameters->omega=PyFloat_AsDouble(py_omega);
+	}
+	//init structure factor variables
+	if (py_sf_modes==NULL)
+	{
+		simulation->observables->sf_mode_number=0;
+		simulation->observables->kx=NULL;
+		simulation->observables->ky=NULL;
+		simulation->observables->fourier_density=NULL;
+		simulation->observables->structure_factor=NULL;
+	}
+	else
+	{
+		simulation->observables->sf_mode_number=PyList_Size(py_sf_modes);
+		simulation->observables->kx=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
+		simulation->observables->ky=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
+		simulation->observables->fourier_density=malloc(simulation->parameters->particle_species*sizeof(double complex*));
+		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(double complex*));
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(simulation->observables->fourier_density+k)=malloc(simulation->observables->sf_mode_number*sizeof(double complex));
+			*(simulation->observables->structure_factor+k)=malloc(simulation->observables->sf_mode_number*sizeof(double complex));
+		}
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			*(simulation->observables->kx+k)=(gint32) PyLong_AsLong(PyList_GetItem(PyList_GetItem(py_sf_modes, k), 0));
+			*(simulation->observables->ky+k)=(gint32) PyLong_AsLong(PyList_GetItem(PyList_GetItem(py_sf_modes, k), 1));
+			for (l=0; l<simulation->parameters->particle_species; l++)
+			{
+				*(*(simulation->observables->fourier_density+l)+k)=0.;
+				*(*(simulation->observables->structure_factor+l)+k)=0.;
+			}
+		}
 	}
 	//dereference python objects
 	if (py_v_flag==1)
