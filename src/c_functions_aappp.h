@@ -121,7 +121,7 @@ struct VM_observables{
 	gint32 * kx;	//x-components of modes to compute structure factore
 	gint32 * ky;	//y-components of modes to compute structure factore
 	double complex ** fourier_density;	//store fourier transform of density for each species
-	double complex ** structure_factor;	//store structure factor for each species
+	gdouble ** structure_factor;	//store structure factor for each species
 };
 
 //data structure containing the full simulation state including all previous structures
