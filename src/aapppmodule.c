@@ -55,7 +55,7 @@ static PyObject* VM_init(PyObject* self, PyObject *args, PyObject * keywds)
 	PyObject * py_weight_function=NULL;
 	gint32 weight_vector_length=100;
 	PyObject * py_sf_modes=NULL;
-	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|OOdOddOdOIiiiiiiOi", kwlist, &py_v, &py_eta, &R, &py_omega, &Lx, &Ly, &py_gamma, &dt, &py_N, &seed, &kn, &order, &binnum_theta, &binnum_neighbors, &bx, &by, &py_weight_function, &weight_vector_length, &py_sf_modes))
+	if (!PyArg_ParseTupleAndKeywords(args, keywds, "|OOdOddOdOIiiiiiiOiO", kwlist, &py_v, &py_eta, &R, &py_omega, &Lx, &Ly, &py_gamma, &dt, &py_N, &seed, &kn, &order, &binnum_theta, &binnum_neighbors, &bx, &by, &py_weight_function, &weight_vector_length, &py_sf_modes))
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when initializing simulation, see >>>help(aappp_init)<<< for help on initialization\n");
 		//dereference python objects
