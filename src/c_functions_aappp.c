@@ -8924,8 +8924,8 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 		PyErr_SetString(PyExc_TypeError, "Error when opening file for saving simulation data\n");
 		return -1;
 	}
-	//write a version flag, this is version 1.2, it writes 2, it can only read/write files that have this flag=2, or the previous flag=0 or flag=1, later versions might write different data files and indicate this by using another value for this flag
-	k=2;
+	//write a version flag, this is version 1.2.1 (sidebranch), it writes 999, it can only read/write files that have this flag=999, or the previous flag=0 or flag=1, flag=2, later versions might write different data files and indicate this by using another value for this flag
+	k=999;
 	if ((write(myfile, &k, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when writing version flag\n");
@@ -9268,6 +9268,34 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 				PyErr_SetString(PyExc_TypeError, "Error when writing neighbor histogram\n");
 				return -1;
 			}
+	//write structure factor measurements
+	if ((write(myfile, &(simulation->observables->sf_mode_number), sizeof(guint32)))==-1)
+	{
+		PyErr_SetString(PyExc_TypeError, "Error when writing structure factor mode number\n");
+		return -1;
+	}
+	for (k=0; k<simulation->observables->sf_mode_number; k++)
+	{
+		if ((write(myfile, (simulation->observables->kx+k), sizeof(guint32)))==-1)
+		{
+			PyErr_SetString(PyExc_TypeError, "Error when writing structure factor x-modes\n");
+			return -1;
+		}
+		if ((write(myfile, (simulation->observables->ky+k), sizeof(guint32)))==-1)
+		{
+			PyErr_SetString(PyExc_TypeError, "Error when writing structure factor y-modes\n");
+			return -1;
+		}
+	}
+	for (k=0; k<simulation->parameters->particle_species; k++)
+		for (j=0; j<simulation->observables->sf_mode_number; j++)
+		{
+			if ((write(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(guint32)))==-1)
+			{
+				PyErr_SetString(PyExc_TypeError, "Error when writing structure factor measurement\n");
+				return -1;
+			}
+		}
 	close(myfile);
 	return 1;
 }
