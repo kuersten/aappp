@@ -967,15 +967,15 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		PyErr_SetString(PyExc_TypeError, "Error when opening file for reading simulation state.\n");
 		return NULL;
 	}
-	//check version flag in data file, this software can only handle datafiles with version flag=0 (version 1.0) or version flag=1 (version 1.1)
-	v=2;
+	//check version flag in data file, this software can only handle datafiles with version flag=0 (version 1.0) or version flag=1 (version 1.1), or version flag=2 (version 1.2) or version flag=999 (version 1.2.1, side branch for structure factor)
+	v=999;
 	if ((read(myfile, &v, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when reading version flag from data file\n");
 		return NULL;
 	}
 	//modified in version 1.2
-	if ((v!=0) && (v!=1) && (v!=2))
+	if ((v!=0) && (v!=1) && (v!=2) && (v!=999))
 	{
 		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.2. Apparently the data file was produced by a later version and can not be read by this version.\n");
 		return NULL;
@@ -1401,7 +1401,55 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 				PyErr_SetString(PyExc_TypeError, "Error when reading neighbor histogram\n");
 				return NULL;
 			}
-		//reading file is done
+	//read/init structure factor variables
+	if (v!=999)
+	{
+		simulation->observables->sf_mode_number=0;
+		simulation->observables->kx=NULL;
+		simulation->observables->ky=NULL;
+		simulation->observables->fourier_density=NULL;
+		simulation->observables->structure_factor=NULL;
+	}
+	else
+	{
+		if ((read(myfile, &(simulation->observables->sf_mode_number), sizeof(gint32)))==-1)
+		{
+			PyErr_SetString(PyExc_TypeError, "Error when reading structure factor mode number\n");
+			return NULL;
+		}
+		simulation->observables->kx=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
+		simulation->observables->ky=malloc(simulation->observables->sf_mode_number*sizeof(gint32));
+		for (k=0; k<simulation->observables->sf_mode_number; k++)
+		{
+			if ((read(myfile, (simulation->observables->kx+k), sizeof(gint32)))==-1)
+			{
+				PyErr_SetString(PyExc_TypeError, "Error when reading structure x-modes\n");
+				return NULL;
+			}
+			if ((read(myfile, (simulation->observables->ky+k), sizeof(gint32)))==-1)
+			{
+				PyErr_SetString(PyExc_TypeError, "Error when reading structure y-modes\n");
+				return NULL;
+			}
+		}
+		simulation->observables->fourier_density=malloc(simulation->parameters->particle_species*sizeof(double complex *));
+		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(double *));
+		for (k=0; k<simulation->parameters->particle_species; k++)
+		{
+			*(simulation->observables->fourier_density+k)=malloc(simulation->parameters->particle_species*sizeof(double complex));
+			*(simulation->observables->structure_factor+k)=malloc(simulation->parameters->particle_species*sizeof(double));
+			for (j=0; j<simulation->observables->sf_mode_number; j++)
+			{
+				*(*(simulation->observables->fourier_density+k)+j)=0.0;
+				if ((read(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(double)))==-1)
+				{
+					PyErr_SetString(PyExc_TypeError, "Error when reading structure factor\n");
+					return NULL;
+				}
+			}
+		}
+	}
+	//reading file is done
 	close(myfile);
 	//calculate metrix free box interaction radius
 	simulation->parameters->mf_interaction_radius=sqrt(simulation->state->length_x*simulation->state->length_y*simulation->parameters->mf_kn/M_PI/simulation->state->particle_number);
