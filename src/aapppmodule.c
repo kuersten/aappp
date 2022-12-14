@@ -1432,16 +1432,16 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 				return NULL;
 			}
 		}
-		simulation->observables->fourier_density=malloc(simulation->parameters->particle_species*sizeof(double complex *));
-		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(double *));
+		simulation->observables->fourier_density=malloc(simulation->parameters->particle_species*sizeof(double complex*));
+		simulation->observables->structure_factor=malloc(simulation->parameters->particle_species*sizeof(gdouble*));
 		for (k=0; k<simulation->parameters->particle_species; k++)
 		{
-			*(simulation->observables->fourier_density+k)=malloc(simulation->parameters->particle_species*sizeof(double complex));
-			*(simulation->observables->structure_factor+k)=malloc(simulation->parameters->particle_species*sizeof(double));
+			*(simulation->observables->fourier_density+k)=malloc(simulation->observables->sf_mode_number*sizeof(double complex));
+			*(simulation->observables->structure_factor+k)=malloc(simulation->observables->sf_mode_number*sizeof(gdouble));
 			for (j=0; j<simulation->observables->sf_mode_number; j++)
 			{
 				*(*(simulation->observables->fourier_density+k)+j)=0.0;
-				if ((read(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(double)))==-1)
+				if ((read(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(gdouble)))==-1)
 				{
 					PyErr_SetString(PyExc_TypeError, "Error when reading structure factor\n");
 					return NULL;
