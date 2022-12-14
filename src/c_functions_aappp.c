@@ -9269,19 +9269,19 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 				return -1;
 			}
 	//write structure factor measurements
-	if ((write(myfile, &(simulation->observables->sf_mode_number), sizeof(guint32)))==-1)
+	if ((write(myfile, &(simulation->observables->sf_mode_number), sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when writing structure factor mode number\n");
 		return -1;
 	}
 	for (k=0; k<simulation->observables->sf_mode_number; k++)
 	{
-		if ((write(myfile, (simulation->observables->kx+k), sizeof(guint32)))==-1)
+		if ((write(myfile, (simulation->observables->kx+k), sizeof(gint32)))==-1)
 		{
 			PyErr_SetString(PyExc_TypeError, "Error when writing structure factor x-modes\n");
 			return -1;
 		}
-		if ((write(myfile, (simulation->observables->ky+k), sizeof(guint32)))==-1)
+		if ((write(myfile, (simulation->observables->ky+k), sizeof(gint32)))==-1)
 		{
 			PyErr_SetString(PyExc_TypeError, "Error when writing structure factor y-modes\n");
 			return -1;
@@ -9290,7 +9290,7 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 	for (k=0; k<simulation->parameters->particle_species; k++)
 		for (j=0; j<simulation->observables->sf_mode_number; j++)
 		{
-			if ((write(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(guint32)))==-1)
+			if ((write(myfile, (*(simulation->observables->structure_factor+k)+j), sizeof(double)))==-1)
 			{
 				PyErr_SetString(PyExc_TypeError, "Error when writing structure factor measurement\n");
 				return -1;
