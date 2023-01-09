@@ -1017,7 +1017,7 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		simulation->parameters->species_particle_number=malloc(simulation->parameters->particle_species*sizeof(guint64));
 		for(k=0; k<simulation->parameters->particle_species; k++)
 		{
-			if ((read(myfile, simulation->parameters->species_particle_number+k, sizeof(gint32)))==-1)
+			if ((read(myfile, simulation->parameters->species_particle_number+k, sizeof(guint64)))==-1)
 			{
 				PyErr_SetString(PyExc_TypeError, "Error when reading number of particles in each species\n");
 				return NULL;
