@@ -5,13 +5,13 @@
  *
  *    Description:  
  *
- *        Version:  1.2
- *        Created:  11/29/2022
+ *        Version:  1.3
+ *        Created:  01/09/2023
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
  *        License:
-Copyright 2022 RUEDIGER KUERSTEN
+Copyright 2023 RUEDIGER KUERSTEN
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -8637,8 +8637,8 @@ gint32 VM_save_state(char * filename, struct VM_simulation * simulation)
 		PyErr_SetString(PyExc_TypeError, "Error when opening file for saving simulation data\n");
 		return -1;
 	}
-	//write a version flag, this is version 1.2, it writes 2, it can only read/write files that have this flag=2, or the previous flag=0 or flag=1, later versions might write different data files and indicate this by using another value for this flag
-	k=2;
+	//write a version flag, this is version 1.3, it writes 3, it can only read/write files that have this flag=3, or the previous flag=0 or flag=1 or flag=2, later versions might write different data files and indicate this by using another value for this flag
+	k=3;
 	if ((write(myfile, &k, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when writing version flag\n");
