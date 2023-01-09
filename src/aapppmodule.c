@@ -5,13 +5,13 @@
  *
  *    Description:  package for agent-based simulations of aligning self-propelled particles in two dimensions 
  *
- *        Version:  1.2
- *        Created:  12/01/2022
+ *        Version:  1.3
+ *        Created:  01/09/2023
  *
  *         Author:  RUEDIGER KUERSTEN 
  *
  *        License:
-Copyright 2022 RUEDIGER KUERSTEN
+Copyright 2023 RUEDIGER KUERSTEN
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -893,27 +893,30 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		return NULL;
 	}
 	//check version flag in data file, this software can only handle datafiles with version flag=0 (version 1.0) or version flag=1 (version 1.1)
-	v=2;
+	v=3;
 	if ((read(myfile, &v, sizeof(gint32)))==-1)
 	{
 		PyErr_SetString(PyExc_TypeError, "Error when reading version flag from data file\n");
 		return NULL;
 	}
 	//modified in version 1.2
-	if ((v!=0) && (v!=1) && (v!=2))
+	//modified in version 1.3
+	if ((v!=0) && (v!=1) && (v!=2) && (v!=3))
 	{
-		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.2. Apparently the data file was produced by a later version and can not be read by this version.\n");
+		PyErr_SetString(PyExc_TypeError, "This is aappp version 1.3. Apparently the data file was produced by a later version and can not be read by this version.\n");
 		return NULL;
 	}
 	//new in version 1.1
 	//modified in version 1.2
+	//modified in version 1.3
 	//print warning if data was produced by version 1.0
 	if (v==0)
-		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information. WARNING: In versions 1.0 and 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
+		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.3, you are loading a data file from aappp version 1.0, from v1.0 to v1.1 the measuring procedure for second to fourth moments of the number of neighbors was changed, be carefull when using those results, all other measured quantities can be used without harm, see >>>help(aappp)<<< for version information. WARNING: In versions 1.0 and 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
 	//new in version 1.2
+	//modified in version 1.3
 	//print warning if data was produced by version 1.1
 	if (v==1)
-		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.2, you are loading a data file from aappp version 1.1. WARNING: In version 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
+		PyErr_WarnEx(PyExc_Warning, "This is aappp version 1.3, you are loading a data file from aappp version 1.1. WARNING: In version 1.1 reflecting boundary conditions for the models mfL, additiveL and nonadditiveL were not correctly implemented. Periodic bc for all models, and reflecting boundary conditions for models VM, NVM, mfVM and mfNVM were ok.", 1);
 	//build simulation data structure
 	struct VM_simulation * simulation=malloc(sizeof(struct VM_simulation));
 	//build data structure to hold state variables (including pseudo random number generator state)
@@ -942,7 +945,8 @@ static PyObject* VM_load(PyObject* self, PyObject *args)
 		simulation->parameters->species_particle_number=malloc(simulation->parameters->particle_species*sizeof(guint64));
 		for(k=0; k<simulation->parameters->particle_species; k++)
 		{
-			if ((read(myfile, simulation->parameters->species_particle_number+k, sizeof(gint32)))==-1)
+	//removed bug in version 1.3: size of variable was wrong before
+			if ((read(myfile, simulation->parameters->species_particle_number+k, sizeof(guint64)))==-1)
 			{
 				PyErr_SetString(PyExc_TypeError, "Error when reading number of particles in each species\n");
 				return NULL;
