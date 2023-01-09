@@ -31,9 +31,10 @@ help(aappp.aappp_init)
 Help on module aappp:
 
 NAME
-    aappp - aappp aligning active particles py package version 1.2
+    aappp - aappp aligning active particles py package version 1.3
 
 VERSION INFO
+    Before version 1.3 loading had a bug for multiple particle species. This was corrected with version 1.3.
     Before version 1.2 the implementation of reflecting boundary conditions for models mfL, additiveL and nonadditiveL was not as intended.
     Particle orientations have not been reflected at the boundary for the aforementioned models (reflecting bc were correct for VM, NVM, mfVM, mfNVM).
     This was corrected with this version.
